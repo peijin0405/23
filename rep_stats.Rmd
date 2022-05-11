@@ -1,0 +1,511 @@
+---
+title: "Replication_Peijin_pl724"
+author: "Peijin Li"
+date: "2022/5/3"
+output:
+  html_document:
+    df_print: paged
+    code_folding: "hide"
+---
+
+<font size=4>Replication: Do Women Give Up Competing More Easily? Evidence from the Lab and the Dutch Math Olympiad</font>
+
+<font size=4>Author of the paper: Thomas Buser & Huaiping Yuan</font>
+
+Journal and link: American Economic Journal: Applied Economics 2019, 11(3): 225–252 https://doi.org/10.1257/app.20170160
+
+```{r}
+rm(list=ls())
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, results='hide'}
+## set path
+#setwd("D:/GU_peijin/GU_second semester/统计学_II/rep_stats")
+#getwd()
+
+## get libraries
+library(fBasics)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(datasets)
+library(haven)
+library(xtable)
+library(knitr)
+library(car)
+library(ggplot2)
+library(ivreg)
+library(statar)
+library(broom)
+library(data.table) ## For some minor data wrangling
+library(fixest)     ## NB: Requires version >=0.9.0
+library(tidyverse)
+library(plm)
+library(miceadds)
+library(lmtest)
+library(multiwayvcov)
+library(stargazer)
+```
+
+This paper mainly answers the question: *Do women give up competing more easily?* The authors use lab experiments and field data from the Dutch Math Olympiad to conduct this research. My replication focuses on the field study part. **In this part, the authors use the field data from the Dutch Math Olympiad to determine whether the gender difference in the reaction to losing carries over to the field**.
+
+<big>1 Background</big>
+
+The goal of the Dutch Mathematical Olympiad is to select a national team to represent the Netherlands in the International Mathematical Olympiad. The first round of the competition consists of a two-hour test. Only the pre-determined best performers from the first round will advance to the second round. The threshold scores for advancement were determined flexibly to select approximately N top performers. Participants in the fourth year of secondary school or lower, regardless of their scores, are free to participate in the latter year. **This paper takes the binary decision of whether to compete again one year later as the outcome measure**. 
+
+This study uses anonymized data for all participants in the 2010–2014 Olympiads, including their score, gender, and whether they participated again the year after. The data present a **sharp regression discontinuity design** because winning and losing depends on a strict cutoff (the threshold score). **Comparing the subsequent participation choices of individuals just below and just above the cutoff makes it possible to estimate the causal effect of losing versus winning on the likelihood of participating again one year later**. In particular, this paper is interested in the gender difference in this effect.
+
+The authors employ two commonly used approaches to estimating the regression discontinuity design: linear and quadratic polynomial. In the linear regressions, they restrict the sample to observations close to the cutoff and control linearly for the forcing variable (first-round score). The polynomial approach consists of using a higher bandwidth. This is because the data is very discrete (only whole points can be scored). Using a second-order polynomial means estimating three parameters on either side of the cutoff on a small number of data points. To avoid overfitting, the linear approach is therefore preferable for small bandwidths.
+
+<big>2 Replication and Results</big>
+
+<big>2.1 Regression results</big>
+
+In this thesis, I replicated the results of Figure 2,3,4 of the paper. Firstly, I conducted a set of estimates. I made subsets of boys and girls separately and estimate the following equation and present regression discontinuity results separately for each gender:
+
+$$
+Y_i = \alpha + \beta_1T_i + \beta_2NetScore_i +  \beta_3 NetScore_i \cdot T_i + \epsilon_i(1),
+$$
+
+where Y is a binary indicator for participating again a year later, T is a binary indicator for scoring above the cutoff (that is, making the second round). 
+
+$$
+Y_i = \alpha + \beta_1T_i + \beta_2 F_i + \beta_3NetScore_i +  \beta_4 NetScore_i \cdot T_i + \beta_5 F_i \cdot T_i + \beta_6 F_i \cdot NetScore_i + \epsilon_i(2),
+$$
+to learn the gender difference, I added F as a binary indicator for being female and an interaction variable of F and T, which estimates the gender difference in the reaction to loss. I also interacted the NetScore with the cutoff indicator T to allow for different slopes left and right of the cutoff. And the interaction of NetScore and T with F to allow for different slopes for each gender.
+
+**To remove unobserved heterogeneity between students from different schools, I introduced school fixed effects, and I also clustered the standard errors at the score level to account for situations where observations within each score group are not independently and identically distributed**. In practice, I estimated the following equation:
+
+$$
+Y_i = \alpha + \beta_1T_i + \beta_2NetScore_i +  \beta_3 NetScore_i \cdot T_i + \gamma_s + \epsilon_i(3),
+$$
+
+$$
+Y_i = \alpha + \beta_1T_i + \beta_2 F_i + \beta_3NetScore_i +  \beta_4 NetScore_i \cdot T_i + \beta_5 F_i \cdot T_i + \beta_6 F_i \cdot NetScore_i + \gamma_s + \epsilon_i(4).
+$$
+
+
+```{r}
+## get data
+matholympiad=read_dta("matholympiad.dta")
+dim(matholympiad)
+head(matholympiad)
+
+##subset girls data(gender==1)
+girls_data = subset(matholympiad, gender== 1)
+##subset boys data(gender==0)
+boys_data = subset(matholympiad, gender== 0)
+
+#use a bandwidth of +/- 5 around the score for the analysis. 
+girls_data_five = girls_data[abs(girls_data$NetScore) < 6,]
+boys_data_five = boys_data[abs(boys_data$NetScore) < 6,]
+#use a bandwidth of +/- 5 around the score for the analysis. 
+girls_data_ten = girls_data[abs(girls_data$NetScore) < 11,]
+boys_data_ten = boys_data[abs(boys_data$NetScore) < 11,]
+```
+
+```{r}
+##regression on both gender
+girls_reg = lm(y ~ NetScore + T + I(NetScore * T),data = girls_data_five)
+#summary(girls_reg)
+boys_reg = lm(y ~ NetScore + T + I(NetScore * T),data = boys_data_five)
+#summary(boys_reg)
+stargazer(girls_reg,boys_reg, type="text", title = "Linear Regression")
+```
+
+```{r}
+##regression on gender difference:The parameter of I(T * gender) is our interest.
+gd_reg= lm(y ~ T + gender + I(T * gender) + NetScore + I(T * NetScore) + I(gender * NetScore) + I(T * NetScore *gender), data = matholympiad)
+summary(gd_reg)
+```
+
+```{r}
+##knitr: output hook with an output.lines= option
+library(knitr)
+hook_output <- knit_hooks$get("output")
+knit_hooks$set(output = function(x, options) {
+   lines <- options$output.lines
+   if (is.null(lines)) {
+     return(hook_output(x, options))  # pass to default hook
+   }
+   x <- unlist(strsplit(x, "\n"))
+   more <- "..."
+   if (length(lines)==1) {        # first n lines
+     if (length(x) > lines) {
+       # truncate the output, but add ....
+       x <- c(head(x, lines), more)
+     }
+   } else {
+     x <- c(if (abs(lines[1])>1) more else NULL, 
+            x[lines], 
+            if (length(x)>lines[abs(length(lines))]) more else NULL
+           )
+   }
+   # paste these lines together
+   x <- paste(c(x, ""), collapse = "\n")
+   hook_output(x, options)
+ })
+```
+
+
+```{r, output.lines=8}
+#{r, output.lines=8}
+
+##regression on both gender with school fixed effects and cluster the standard errors at the score level.(Girls)
+girls_reg_fixed = feols(y ~ NetScore + T + I(NetScore * T) + factor(School), vcov = ~Score,data = girls_data_five)
+summary(girls_reg_fixed)
+```
+```{r, output.lines=8}
+##{r, output.lines=8} 
+
+##regression on both gender with school fixed effects and cluster the standard errors at the score level.(Boys)
+boys_reg_fixed = feols(y ~ NetScore + T + I(NetScore * T)+ factor(School), vcov = ~Score,data = boys_data_five)
+summary(boys_reg_fixed)
+```
+
+
+```{r, output.lines=12}
+##{r, output.lines=12}
+
+##regression on gender difference with school fixed effects and cluster the standard errors at the score level.
+gd_reg_fixed = feols(y ~ T + gender + I(T * gender) + NetScore + I(T * NetScore) + I(gender * NetScore) + I(T * NetScore *gender) + factor(School), vcov = ~Score, data = matholympiad)
+summary(gd_reg_fixed)
+```
+
+According to the results, we could see that in the non-clustered regression, the coefficient of our interest T is 0.143, which means that those girls who get a score higher than the threshold,  have a 14.3% higher possibility of participating in the competition in the following year. This difference between girls is statistically significant under the confidence level of 95%. In other words, **according to girls who score within 5 points of the cutoff, the effect of losing roughly translates to a 14.3 percent reduction in the likelihood of participating again**.
+
+For boys, the influence of their score results on the following year’s participation is not significant. In regression (2), we could see that the gender difference in the reaction to losing is significant, with a confidence level of 90%. However, these differences are not significant with school fixed effects and standard errors clustered at the score level. 
+
+
+<big>2.2 Regression discontinuity graphs</big>
+
+In Figure 2, **I presented regression discontinuity graphs using both the linear and polynomial approaches**. Panel A shows the data close to the cutoff (plus-minus 5 points) and linear regression lines. Following the paper, the first-round scores are normalized such that a score of zero or above means passing the threshold. Panel B shows a wider bandwidth (plus-minus 10 points) and quadratic approximations. **In both cases, it is evident that there is a sizable drop at the cutoff in the likelihood of participating again for girls but not for boys**. I yielded the same result as the paper in the part. 
+
+```{r}
+#Figure 2. Regression Discontinuity Graphs
+#Panel A: Regression Discontinuity Graphs (linear fit) shows the data close to the cutoff (plus-minus 5 points) and linear regression lines.
+
+#boys_reg = lm(y ~ NetScore + T + I(NetScore * T),data = boys_data)
+boys_data_five$pred_poly1 = predict(boys_reg, newdata = boys_data_five)
+#girls_reg = lm(y ~ NetScore + T + I(NetScore * T),data = girls_data)
+girls_data_five$pred_poly1 = predict(girls_reg, newdata = girls_data_five)
+
+#prepare the dataset for plot 
+plotdata1=aggregate(girls_data_five$pred_poly1, list(girls_data_five$NetScore), FUN=mean)
+plotdata2=aggregate(boys_data_five$pred_poly1, list(boys_data_five$NetScore), FUN=mean)
+
+plot(plotdata2$Group.1,plotdata2$x,type="b",col="blue",xlab="Score in first round (normalized)",ylab="Participation in following year",main="Panel A: Regression Discontinuity Graphs (linear fit)", ylim = c(0, 1))
+points(plotdata1$Group.1,plotdata1$x,type="b",col="red")
+abline(v=-0.5, col="black")
+grid(nx = NA,ny = NULL,lty = 2, col = "gray", lwd = 2)
+
+legend("topleft",c("Girls", "Boys"),col=c("red", "blue"), lty=1:2, cex=0.8)
+```
+
+```{r}
+###Figure 2. Regression Discontinuity Graphs
+#Panel B: Regression Discontinuity Graphs (quadratic fits) shows a wider bandwidth(plus-minus 10 points) and quadratic approximations.
+
+##create quadratic polynomial of the forcing variable
+boys_data_ten$NetScore_2 = boys_data_ten$NetScore^2
+girls_data_ten$NetScore_2 = girls_data_ten$NetScore^2
+
+##quadratic polynomial regression
+boys_reg2 = lm(y ~  T + NetScore + NetScore_2 + I(NetScore * T) + I(NetScore_2 * T), data = boys_data_ten)
+boys_data_ten$pred_poly2 = predict(boys_reg2, newdata = boys_data_ten)
+girls_reg2 = lm(y ~  T + NetScore + NetScore_2 + I(NetScore * T) + I(NetScore_2 * T), data = girls_data_ten)
+girls_data_ten$pred_poly2 = predict(girls_reg2, newdata = girls_data_ten)
+
+#prepare the dataset for plot 
+plotdata3=aggregate(girls_data_ten$pred_poly2, list(girls_data_ten$NetScore), FUN=mean)
+plotdata4=aggregate(boys_data_ten$pred_poly2, list(boys_data_ten$NetScore), FUN=mean)
+
+plot(plotdata4$Group.1,plotdata4$x,type="b",col="blue",xlab="Score in first round (normalized)",ylab="Participation in following year",main="Panel B: Regression Discontinuity Graphs (quadratic fits)", ylim = c(0, 1.05))
+points(plotdata3$Group.1,plotdata3$x,type="b",col="red")
+abline(v=-0.5, col="black")
+grid(nx = NA,ny = NULL,lty = 2, col = "gray", lwd = 2)
+
+legend("topleft",c("Girls", "Boys"),col=c("red", "blue"), lty=1:2, cex=0.8)
+```
+
+
+<big>2.3 Discontinuity estimates for varying bandwidths</big>
+
+Figures 3 and 4 show OLS estimates of the discontinuity for a range of score bandwidths around the cutoff using the linear and quadratic approaches. **In all regressions, I clustered the standard errors at the score level**. And **error bars represent 90 percent confidence intervals**. For the linear approach, I started with a bandwidth of 4 and for the quadratic approach, I started with a bandwidth of 7.
+
+```{r, results='hide'}
+##Figure 3. Discontinuity Estimates for Varying Bandwidths (Linear)
+##Panel A: Boys
+
+##loop through the bwidths
+CoefMatrix_li_boys	= matrix(NA, 7, 5)# Matrix to store our results
+bwidths = seq(from=4, to=10, by=1)
+for(ii in 1:length(bwidths)) {
+  bw_reg = lm.cluster(y ~ NetScore + T + I(T * NetScore) , cluster='Score', data = boys_data[abs(boys_data$NetScore) < bwidths[ii],])
+  CoefMatrix_li_boys[ii,1]= bwidths[ii]
+  CoefMatrix_li_boys[ii,2]= coefficients(bw_reg)[3]
+  CoefMatrix_li_boys[ii,3]= summary(bw_reg)[ , "Std. Error"][3]
+  CoefMatrix_li_boys[ii,4]= coefficients(bw_reg)[3] - 1.64*CoefMatrix_li_boys[ii,3]##: Error bars represent 90 percent confidence intervals.
+  CoefMatrix_li_boys[ii,5]= coefficients(bw_reg)[3] + 1.64*CoefMatrix_li_boys[ii,3]##: Error bars represent 90 percent confidence intervals.
+}
+
+##put the result into a df
+d_li_boys <- data.frame(bwidths = CoefMatrix_li_boys[,1], point.estimate = CoefMatrix_li_boys[,2], ci.upper = CoefMatrix_li_boys[,4], ci.lower = CoefMatrix_li_boys[,5])
+```
+
+```{r}
+#plot
+ggplot(data=d_li_boys, mapping = aes(x = bwidths, y = point.estimate, ymin = ci.lower, ymax = ci.upper)) +
+    geom_pointrange(size = 0.4) +
+    geom_hline(yintercept = 0, colour="brown4") +
+    ggtitle("Panel A.Boys Linear") +
+    xlab("Rang") +
+    ylab("Effect of losing")
+```
+
+```{r, results='hide'}
+##Figure 3. Discontinuity Estimates for Varying Bandwidths (Linear)
+##Panel B: Girls
+
+##loop through the bwidths
+CoefMatrix_li_girls	= matrix(NA, 7, 5)# Matrix to store our results
+bwidths = seq(from=4, to=10, by=1)
+for(ii in 1:length(bwidths)) {
+  bw_reg = lm.cluster(y ~ NetScore + T + I(T * NetScore) , cluster='Score', data = girls_data[abs(girls_data$NetScore) < bwidths[ii],])##cluster the standard errors at the score level
+  CoefMatrix_li_girls[ii,1]= bwidths[ii]
+  CoefMatrix_li_girls[ii,2]= coefficients(bw_reg)[3]
+  CoefMatrix_li_girls[ii,3]= summary(bw_reg)[ , "Std. Error"][3]
+  CoefMatrix_li_girls[ii,4]= coefficients(bw_reg)[3] - 1.64*CoefMatrix_li_girls[ii,3]##: Error bars represent 90 percent confidence intervals.
+  CoefMatrix_li_girls[ii,5]= coefficients(bw_reg)[3] + 1.64*CoefMatrix_li_girls[ii,3]##: Error bars represent 90 percent confidence intervals.
+}
+
+##put the result into a df
+d_li_girls <- data.frame(bwidths = CoefMatrix_li_girls[,1], point.estimate = CoefMatrix_li_girls[,2], ci.upper = CoefMatrix_li_girls[,4], ci.lower = CoefMatrix_li_girls[,5])
+```
+
+```{r}
+#plot
+ggplot(data=d_li_girls, mapping = aes(x = bwidths, y = point.estimate, ymin = ci.lower, ymax = ci.upper)) +
+    geom_pointrange(size = 0.4) +
+    geom_hline(yintercept = 0, colour="brown4") +
+    ggtitle("Panel B.Girls Linear") +
+    xlab("Rang") +
+    ylab("Effect of losing")
+```
+
+
+```{r, results='hide'}
+##Figure 3. Discontinuity Estimates for Varying Bandwidths (Linear)
+##Panel C: Gender difference
+
+##loop through the bwidths
+CoefMatrix_li_gd	= matrix(NA, 7, 5)# Matrix to store our results
+bwidths = seq(from=4, to=10, by=1)
+for(ii in 1:length(bwidths)) {
+  bw_reg = lm.cluster(y ~ T + gender + I(T * gender) + NetScore + I(T * NetScore) + I(gender * NetScore) + I(T * NetScore *gender), cluster='Score', data = matholympiad[abs(matholympiad$NetScore) < bwidths[ii],])##cluster the standard errors at the score level
+  CoefMatrix_li_gd[ii,1]= bwidths[ii]
+  CoefMatrix_li_gd[ii,2]= coefficients(bw_reg)[4]
+  CoefMatrix_li_gd[ii,3]= summary(bw_reg)[ , "Std. Error"][4]
+  CoefMatrix_li_gd[ii,4]= coefficients(bw_reg)[4] - 1.64*CoefMatrix_li_gd[ii,3]##: Error bars represent 90 percent confidence intervals.
+  CoefMatrix_li_gd[ii,5]= coefficients(bw_reg)[4] + 1.64*CoefMatrix_li_gd[ii,3]##: Error bars represent 90 percent confidence intervals.
+}
+
+##put the result into a df
+d_li_gd <- data.frame(bwidths = CoefMatrix_li_gd[,1], point.estimate = CoefMatrix_li_gd[,2], ci.upper = CoefMatrix_li_gd[,4], ci.lower = CoefMatrix_li_gd[,5])
+```
+
+```{r}
+#plot
+ggplot(data=d_li_gd, mapping = aes(x = bwidths, y = point.estimate, ymin = ci.lower, ymax = ci.upper)) +
+    geom_pointrange(size = 0.4) +
+    geom_hline(yintercept = 0, colour="brown4") +
+    ggtitle("Panel C.Gender difference Linear") +
+    xlab("Rang") +
+    ylab("Gender difference in effect of losing")
+```
+
+
+```{r, results='hide'}
+##Figure 4. Discontinuity Estimates for Varying Bandwidths (Quadratic)
+##Panel A: Boys
+
+##create quadratic polynomial of the forcing variable
+boys_data$NetScore_2 = boys_data$NetScore^2
+girls_data$NetScore_2 = girls_data$NetScore^2
+matholympiad$NetScore_2 = matholympiad$NetScore^2
+
+##loop through the bwidths 
+CoefMatrix_qu_boys	= matrix(NA, 14, 5)# Matrix to store our results
+bwidths = seq(from=7, to=20, by=1)
+for(ii in 1:length(bwidths)) {
+  bw_reg = lm.cluster(y ~ T + NetScore + NetScore_2 + I(NetScore * T) + I(NetScore_2 * T), cluster='Score', data = boys_data[abs(boys_data$NetScore) < bwidths[ii],])##cluster the standard errors at the score level
+  CoefMatrix_qu_boys[ii,1]= bwidths[ii]
+  CoefMatrix_qu_boys[ii,2]= coefficients(bw_reg)[2]
+  CoefMatrix_qu_boys[ii,3]= summary(bw_reg)[ , "Std. Error"][2]
+  CoefMatrix_qu_boys[ii,4]= coefficients(bw_reg)[2] - 1.64*CoefMatrix_qu_boys[ii,3]##: Error bars represent 90 percent confidence intervals.
+  CoefMatrix_qu_boys[ii,5]= coefficients(bw_reg)[2] + 1.64*CoefMatrix_qu_boys[ii,3]##: Error bars represent 90 percent confidence intervals.
+}
+
+##put the result into a df
+d_qu_boys <- data.frame(bwidths = CoefMatrix_qu_boys[,1], point.estimate = CoefMatrix_qu_boys[,2], ci.upper = CoefMatrix_qu_boys[,4], ci.lower = CoefMatrix_qu_boys[,5])
+```
+
+```{r}
+#plot
+ggplot(data=d_qu_boys, mapping = aes(x = bwidths, y = point.estimate, ymin = ci.lower, ymax = ci.upper)) +
+    geom_pointrange(size = 0.4) +
+    geom_hline(yintercept = 0, colour="brown4") +
+    ggtitle("Panel A.Boys Quadratic") +
+    xlab("Rang") +
+    ylab("Effect of losing")
+```
+
+```{r, results='hide'}
+##Figure 4. Discontinuity Estimates for Varying Bandwidths (Quadratic)
+#Panel B: Girls
+
+##loop through the bwidths
+CoefMatrix_qu_girls	= matrix(NA, 14, 5)# Matrix to store our results
+bwidths = seq(from=7, to=20, by=1)
+for(ii in 1:length(bwidths)) {
+  bw_reg = lm.cluster(y ~ T + NetScore + NetScore_2 + I(NetScore * T) + I(NetScore_2 * T), cluster='Score', data = girls_data[abs(girls_data$NetScore) < bwidths[ii],])##cluster the standard errors at the score level
+  CoefMatrix_qu_girls[ii,1]= bwidths[ii]
+  CoefMatrix_qu_girls[ii,2]= coefficients(bw_reg)[2]
+  CoefMatrix_qu_girls[ii,3]= summary(bw_reg)[ , "Std. Error"][2]
+  CoefMatrix_qu_girls[ii,4]= coefficients(bw_reg)[2] - 1.64*CoefMatrix_qu_girls[ii,3]##: Error bars represent 90 percent confidence intervals.
+  CoefMatrix_qu_girls[ii,5]= coefficients(bw_reg)[2] + 1.64*CoefMatrix_qu_girls[ii,3]##: Error bars represent 90 percent confidence intervals.
+}
+
+##put the result into a df
+d_qu_girls <- data.frame(bwidths = CoefMatrix_qu_girls[,1], point.estimate = CoefMatrix_qu_girls[,2], ci.upper = CoefMatrix_qu_girls[,4], ci.lower = CoefMatrix_qu_girls[,5])
+```
+
+```{r}
+#plot
+ggplot(data=d_qu_girls, mapping = aes(x = bwidths, y = point.estimate, ymin = ci.lower, ymax = ci.upper)) +
+    geom_pointrange(size = 0.4) +
+    geom_hline(yintercept = 0, colour="brown4") +
+    ggtitle("Panel B.Girls Quadratic") +
+    xlab("Rang") +
+    ylab("Effect of losing")
+```
+
+```{r, results='hide'}
+##Figure 4. Discontinuity Estimates for Varying Bandwidths (Quadratic)
+##Panel C: Gender difference
+
+##loop through the bwidths
+CoefMatrix_qu_gd	= matrix(NA, 14, 5)# Matrix to store our results
+bwidths = seq(from=7, to=20, by=1)
+for(ii in 1:length(bwidths)) {
+  bw_reg = lm.cluster(y ~ T + gender + I(T * gender) + NetScore + I(T * NetScore) + I(gender * NetScore) + I(T * NetScore *gender) + NetScore_2 + I(NetScore_2 * T)+I(gender * NetScore_2) + I(T * NetScore_2 *gender), cluster='Score', data = matholympiad[abs(matholympiad$NetScore) < bwidths[ii],])##cluster the standard errors at the score level
+  CoefMatrix_qu_gd[ii,1]= bwidths[ii]
+  CoefMatrix_qu_gd[ii,2]= coefficients(bw_reg)[4]
+  CoefMatrix_qu_gd[ii,3]= summary(bw_reg)[ , "Std. Error"][4]
+  CoefMatrix_qu_gd[ii,4]= coefficients(bw_reg)[4] - 1.64*CoefMatrix_qu_gd[ii,3]##: Error bars represent 90 percent confidence intervals.
+  CoefMatrix_qu_gd[ii,5]= coefficients(bw_reg)[4] + 1.64*CoefMatrix_qu_gd[ii,3]##: Error bars represent 90 percent confidence intervals.
+}
+
+##put the result into a df
+d_qu_gd <- data.frame(bwidths = CoefMatrix_qu_gd[,1], point.estimate = CoefMatrix_qu_gd[,2], ci.upper = CoefMatrix_qu_gd[,4], ci.lower = CoefMatrix_qu_gd[,5])
+```
+
+```{r}
+#plot
+ggplot(data=d_qu_gd, mapping = aes(x = bwidths, y = point.estimate, ymin = ci.lower, ymax = ci.upper)) +
+    geom_pointrange(size = 0.4) +
+    geom_hline(yintercept = 0, colour="brown4") +
+    ggtitle("Panel C.Gender difference Quadratic") +
+    xlab("Rang") +
+    ylab("Gender difference in effect of losing")
+```
+
+
+According to Figures 3 and 4, regardless of the degree of the polynomial and the bandwidth used, the discontinuity estimates for the boys are always very close to zero. Unlike the paper's results, **I found the discontinuity estimates for the girl are more distant from zero but fail to reject the null hypothesis that the effect of losing is different between girls who pass the threshold and who do not**. In the estimation of gender difference in the effect of losing in Figure 3, we could see that with the bandwidth to be 7, we could reject the null hypothesis that there is no gender difference in the effect of losing. Even though we can not reach the conclusion that girls are sensitive to the effect of losing, we learn that losing exerts different effects on different genders. According to Figure 2 and the results of regression(2) and regression(3), we could conclude that girls react significantly more strongly to losing than boys.  
+
+
+
+<big>3 Robustness Test</big>
+
+```{r, results='hide'}
+##Test on all bandwidths(Linear):
+
+##loop through the bwidths
+CoefMatrix_li_gd	= matrix(NA, 20, 5)# Matrix to store our results
+bwidths = seq(from=1, to=20, by=1)
+for(ii in 1:length(bwidths)) {
+  bw_reg = lm.cluster(y ~ T + gender + I(T * gender) + NetScore + I(T * NetScore) + I(gender * NetScore) + I(T * NetScore *gender), cluster='Score', data = matholympiad[abs(matholympiad$NetScore) < bwidths[ii],])##cluster the standard errors at the score level
+  CoefMatrix_li_gd[ii,1]= bwidths[ii]
+  CoefMatrix_li_gd[ii,2]= coefficients(bw_reg)[4]
+  CoefMatrix_li_gd[ii,3]= summary(bw_reg)[ , "Std. Error"][4]
+  CoefMatrix_li_gd[ii,4]= coefficients(bw_reg)[4] - 1.64*CoefMatrix_li_gd[ii,3]##: Error bars represent 90 percent confidence intervals.
+  CoefMatrix_li_gd[ii,5]= coefficients(bw_reg)[4] + 1.64*CoefMatrix_li_gd[ii,3]##: Error bars represent 90 percent confidence intervals.
+}
+```
+
+```{r}
+#plot
+plot(CoefMatrix_li_gd[,1],CoefMatrix_li_gd[,2],type="b",col="blue",xlab="Bandwidth",ylab="Estimate",main="Sensitivity Analysis: Bandwidth(Linear)",ylim=c(-0.2,1))
+lines(CoefMatrix_li_gd[,1],CoefMatrix_li_gd[,4],type="l",col="red")
+lines(CoefMatrix_li_gd[,1],CoefMatrix_li_gd[,5],type="l",col="red")
+abline(h=0, col="black")
+grid(nx = NULL, ny = NA, lty = 2, col = "gray", lwd = 2)
+```
+
+
+```{r, results='hide'}
+#Test on all bandwidths(Quadratic):
+
+##loop through the bwidths
+CoefMatrix_qu_gd	= matrix(NA, 20, 5)# Matrix to store our results
+bwidths = seq(from=1, to=20, by=1)
+for(ii in 1:length(bwidths)) {
+  bw_reg = lm.cluster(y ~ T + gender + I(T * gender) + NetScore + I(T * NetScore) + I(gender * NetScore) + I(T * NetScore *gender) + NetScore_2 + I(NetScore_2 * T)+I(gender * NetScore_2) + I(T * NetScore_2 *gender), cluster='Score', data = matholympiad[abs(matholympiad$NetScore) < bwidths[ii],])##cluster the standard errors at the score level
+  CoefMatrix_qu_gd[ii,1]= bwidths[ii]
+  CoefMatrix_qu_gd[ii,2]= coefficients(bw_reg)[4]
+  CoefMatrix_qu_gd[ii,3]= summary(bw_reg)[ , "Std. Error"][4]
+  CoefMatrix_qu_gd[ii,4]= coefficients(bw_reg)[4] - 1.64*CoefMatrix_qu_gd[ii,3]##: Error bars represent 90 percent confidence intervals.
+  CoefMatrix_qu_gd[ii,5]= coefficients(bw_reg)[4] + 1.64*CoefMatrix_qu_gd[ii,3]##: Error bars represent 90 percent confidence intervals.
+}
+```
+
+```{r}
+#plot
+plot(CoefMatrix_qu_gd[,1],CoefMatrix_qu_gd[,2],type="b",col="blue",xlab="Bandwidth",ylab="Estimate",main="Sensitivity Analysis: Bandwidth(Quadratic)",ylim=c(-0.4,1))
+lines(CoefMatrix_qu_gd[,1],CoefMatrix_qu_gd[,4],type="l",col="red")
+lines(CoefMatrix_qu_gd[,1],CoefMatrix_qu_gd[,5],type="l",col="red")
+abline(h=0, col="black")
+grid(nx = NULL, ny = NA, lty = 2, col = "gray", lwd = 2)
+```
+
+```{r}
+#Implement a permutation test to assess the credibility of the gender difference:
+
+reps = 500
+CoefMatrix  = matrix(NA, reps, 1)   # Matrix to store our results.  
+for(ii in 1:reps) {matholympiad$p_gender = sample(0:1, dim(matholympiad)[1], replace = TRUE)
+  ##Generate random gender data
+  p_gd_reg = lm(y ~ T + p_gender + I(T * p_gender) + NetScore + I(T * NetScore) + I(p_gender * NetScore) + I(T * NetScore *p_gender), data = matholympiad)
+  CoefMatrix[ii,1]=coefficients(p_gd_reg)[2]
+}
+
+##draw the graph
+hist(CoefMatrix[,1],breaks=20,main="Permutation Test",xlab="Permutation Estimate")
+abline(v=0.0853844, col="red")##mark the original coefficient
+
+```
+
+To substantiate the robustness of the results, I conducted a sensitivity analysis by involving the whole bandwidths; these figures show that as the bandwidth increases, the result converges to a value(the line flattens out and the interval shrinks) and looks stable when the bandwidth goes beyond 10. According to the graph, the confidence interval keeps covering the value of 0; this means we can not reject the null that there is a gender difference in the effect of losing. I also conducted the permutation test, in which I randomly assigned the gender data and repeated the regression 500 times. According to the histogram, we could see that the frequency of the coefficient of D is centralized at 0.11. The original value of D is 0.0853844, which is not very far from the centralized value. Through this, we could justify that there is a chance that the effect of treatment is a random result. 
+
+
+<big>4 Parting Thoughts</big>
+
+In the replication of this paper, I found that the results were statistically significant when I applied non-cluster regression in replicating Figures 3 and 4. If I employ clustered regression, in many cases, I cannot reject the null hypothesis. In the replicated regression, I noticed that the significance of coefficients is diminished with clustered regression. This leads to the reflection of Clustering. In the paper-- *When Should You Adjust Standard Errors for Clustering?*( https://economics.mit.edu/files/13927), the authors discussed this condition of adjusting standard errors for Clustering. They proposed that **Clustering is in essence a design problem, either a sampling design or an experimental design issue**. It is a sampling design issue if sampling follows a two-stage process in which, in the first stage, a subset of clusters is randomly drawn from the population, and in the second stage, units are randomly drawn from the sampled clusters. In this case, the clustering adjustment is justified because there are clusters in the population that we do not see in the sample. And Clustering is an experimental design issue if the assignment is correlated within the clusters. 
+
+In the case of studying the gender difference in losing effect, it is neither a sampling design nor an experimental design issue, since we cannot analogize a student achieving a certain score to a random assignment of scores, and there is no treatment effect in this case. **Therefore, the use of Clustering in this case may lead to underestimation of significance and commit the second type of error in statistical inference**. Last but not least, when I conducted the OLS estimates of the discontinuity for a range of score bandwidths around the cutoff using the linear and quadratic approaches without cluster on “Score”, I found the gender difference in losing effect is statistically significant and generated the conclusion that girls give up competing more easily than boys, as demonstrated by the fault at the threshold in Figure 2.
+
+<big>References</big>
+
+* Abadie, Alberto, et al. When Should You Adjust Standard Errors for Clustering? Oct. 2017.
+* Buser, Thomas, et al. “Do Women Give Up Competing More Easily?  Evidence from the Lab and the Dutch Math Olympiad.” American Economic Journal: Applied Economics, 2019, pp. 225–52.
+
