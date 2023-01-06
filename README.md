@@ -1,6 +1,7 @@
 # Replication: Do Women Give Up Competing More Easily? Evidence from the Lab and the Dutch Math Olympiad
 ## Author of the paper: Thomas Buser & Huaiping Yuan
-## Journal and link: American Economic Journal: Applied Economics 2019, 11(3): 225–252 https://doi.org/10.1257/app.20170160 
+### Journal and link: American Economic Journal: Applied Economics 2019, 11(3): 225–252 
+https://doi.org/10.1257/app.20170160 
 
 ### 1 Background
 This paper mainly answers the question: Do women give up competing more easily? The authors use lab experiments and field data from the Dutch Math Olympiad to conduct this research. My replication focuses on the field study part. **In this part, the authors use the field data from the Dutch Math Olympiad to determine whether the gender difference in the reaction to losing carries over to the field**.
@@ -39,9 +40,9 @@ For boys, the influence of their score results on the following year’s partici
 
 #### Regression discontinuity graphs
 
-![Panel_B_Girls_Linear](https://user-images.githubusercontent.com/89746479/210924846-d9351da4-fd84-4419-8dfd-631e643f70eb.png)
+![Panel_A_Regression_Discountinuity_Graphs(linear_fit)](https://user-images.githubusercontent.com/89746479/210925404-bb740938-d8b1-4577-8f9c-145a5c723eb8.png)
 
-![Panel_B_Girls_Quadratic](https://user-images.githubusercontent.com/89746479/210924871-8fdccbb6-e478-40a5-b037-f81cd1c962f8.png)
+![Panel_B_Regression_Discountinuity_Graphs(quadratic_fit)](https://user-images.githubusercontent.com/89746479/210925423-caebe596-6245-4176-8b5b-2f6ead81d14d.png)
 
 ![Panel_C_Gender_difference_Linear](https://user-images.githubusercontent.com/89746479/210925019-2e9f5f63-3de3-459e-8b1d-87cb839f03ad.png)
 
