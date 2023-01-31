@@ -55,6 +55,8 @@ According to Figures 3 and 4, regardless of the degree of the polynomial and the
 
 ![Sensitivity_Analaysis_bandwidth(Quadratic)](https://user-images.githubusercontent.com/89746479/210925130-6cfc466c-27a7-46ff-95db-02d57eddfecb.png)
 
+![06bb6776f31fa769c87a7ebb58c4e3a](https://user-images.githubusercontent.com/89746479/215657969-19dc0e8e-8b8a-43cd-b8c7-27b983d87105.png)
+
 #### 4 Parting Thoughts
 In the replication of this paper, I found that the results were statistically significant when I applied non-cluster regression in replicating Figures 3 and 4. If I employ clustered regression, in many cases, I cannot reject the null hypothesis. In the replicated regression, I noticed that the significance of coefficients is diminished with clustered regression. This leads to the reflection of Clustering. In the paper-- *When Should You Adjust Standard Errors for Clustering?*( https://economics.mit.edu/files/13927), the authors discussed this condition of adjusting standard errors for Clustering. They proposed that **Clustering is in essence a design problem, either a sampling design or an experimental design issue**. It is a sampling design issue if sampling follows a two-stage process in which, in the first stage, a subset of clusters is randomly drawn from the population, and in the second stage, units are randomly drawn from the sampled clusters. In this case, the clustering adjustment is justified because there are clusters in the population that we do not see in the sample. And Clustering is an experimental design issue if the assignment is correlated within the clusters. 
 
