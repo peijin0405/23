@@ -2,6 +2,8 @@
 ### Replication: Do Women Give Up Competing More Easily? Evidence from the Lab and the Dutch Math Olympiad
 Author of the paper: Thomas Buser & Huaiping Yuan
 
+This project replicates and expands upon the field study in the paper *"Do Women Give Up Competing More Easily? Evidence from the Lab and the Dutch Math Olympiad"* by Thomas Buser and Huaiping Yuan. The study investigates gender differences in the likelihood of continuing to compete after losing. Using field data from the Dutch Math Olympiad (2010–2014), the project analyzes the impact of scoring just above or below the threshold for qualifying for the second round. A regression discontinuity design is employed to estimate the causal effect of losing versus winning on the likelihood of participating again the following year, with a particular focus on gender differences. The results show that girls who narrowly miss the threshold are 14.3% less likely to compete again, while boys do not exhibit a statistically significant change in behavior. Despite this, when applying clustered standard errors, the gender difference becomes less significant. The findings highlight that girls may react more strongly to losing, offering insights into how gender impacts competitive behavior in academic settings.
+
 For the full report, please see: Replication_Peijin_pl724.html
 ### Journal and link: 
 American Economic Journal: Applied Economics 2019, 11(3): 225–252 
