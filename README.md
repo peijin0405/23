@@ -1,5 +1,6 @@
-# Replication: Do Women Give Up Competing More Easily? Evidence from the Lab and the Dutch Math Olympiad
-## Author of the paper: Thomas Buser & Huaiping Yuan
+# Gender Differences in Competitive Persistence: An Empirical Study Using Dutch Math Olympiad Data
+### Replication: Do Women Give Up Competing More Easily? Evidence from the Lab and the Dutch Math Olympiad
+### Author of the paper: Thomas Buser & Huaiping Yuan
 ### Journal and link: 
 American Economic Journal: Applied Economics 2019, 11(3): 225–252 
 https://doi.org/10.1257/app.20170160 
